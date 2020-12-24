@@ -1,0 +1,6 @@
+1- Load the learning dataset in D - Prepare the probabilities of Class labels
+2- Load the test dataset in T
+3- Loop through each tuple in T
+    3.1- Loop through each class label
+        3.1.1- Calculate P(Ci|X) = P(X|Ci) * P(C)
+    3.2- Determine the highest P(Ci|X) and hence the best class label
