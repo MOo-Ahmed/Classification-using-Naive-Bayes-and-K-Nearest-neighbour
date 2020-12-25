@@ -1,9 +1,8 @@
 public class App {
     public static void main(String[] args) throws Exception {
-        System.out.println("Hello" == "Hello");
+        //System.out.println("");
 
-        Classifier cl = new Classifier();
-        cl.manageClassification();
-        
+        Classifier.run();
+
     }
 }
