@@ -1,4 +1,5 @@
 import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -7,8 +8,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Classifier {
-    boolean laplacianCorrection = false ;
-    int N = 0 ;
+    boolean laplacianCorrection = false;
+    int N = 0;
 
     public ArrayList<Record> learningDataset = new ArrayList<>();
     public ArrayList<Record> testDataset = new ArrayList<>();
@@ -24,16 +25,14 @@ public class Classifier {
     }
 
     public void start() throws IOException {
-        
+
         loadLearningData();
         loadTestData();
 
-        
         classify();
-
         writeClassifiedTestData();
         System.out.println("Finished Writing records back");
-        
+        System.out.println("\nClassifier accuracy = " + calculateClassifierAccuracy());
 
     }
 
@@ -44,14 +43,15 @@ public class Classifier {
         file.seek(0);
         for (int i = 0; i < numberOfCars; i++) {
             String inputParts[] = file.readLine().split(",");
-            String bPrice = inputParts[0];
-            String mPrice = inputParts[1];
-            String doors = inputParts[2];
-            String capacity = inputParts[3];
-            String lugg = inputParts[4];
-            String safety = inputParts[5];
-            String carAcc = inputParts[6];
-            Record r = new Record(bPrice, mPrice, doors, capacity, lugg, safety);
+            String id = inputParts[0];
+            String bPrice = inputParts[1];
+            String mPrice = inputParts[2];
+            String doors = inputParts[3];
+            String capacity = inputParts[4];
+            String lugg = inputParts[5];
+            String safety = inputParts[6];
+            String carAcc = inputParts[7];
+            Record r = new Record(id, bPrice, mPrice, doors, capacity, lugg, safety);
             r.setCarAcceptability(carAcc);
             learningDataset.add(r);
             if (uniqueClasses.indexOf(carAcc) == -1) {
@@ -72,13 +72,14 @@ public class Classifier {
         file.seek(0);
         for (int i = 0; i < numberOfCars; i++) {
             String inputParts[] = file.readLine().split(",");
-            String bPrice = inputParts[0];
-            String mPrice = inputParts[1];
-            String doors = inputParts[2];
-            String capacity = inputParts[3];
-            String lugg = inputParts[4];
-            String safety = inputParts[5];
-            Record r = new Record(bPrice, mPrice, doors, capacity, lugg, safety);
+            String id = inputParts[0];
+            String bPrice = inputParts[1];
+            String mPrice = inputParts[2];
+            String doors = inputParts[3];
+            String capacity = inputParts[4];
+            String lugg = inputParts[5];
+            String safety = inputParts[6];
+            Record r = new Record(id, bPrice, mPrice, doors, capacity, lugg, safety);
             testDataset.add(r);
         }
         file.close();
@@ -87,20 +88,22 @@ public class Classifier {
     public void classify() {
         // Loop through all objects
         for (int i = 0; i < testDataset.size(); i++) {
-            Record X = testDataset.get(i);
+
             // Loop through all class labels to determine the best
             double bestProbability = -1;
             int indexOfBestClass = -1;
             for (int j = 0; j < uniqueClasses.size(); j++) {
+                // System.out.println("Hi");
                 String C = uniqueClasses.get(j);
-                double p = calculateBayesianProbability(X, C);
+                double p = calculateBayesianProbability(testDataset.get(i), C);
                 if (bestProbability < p) {
                     indexOfBestClass = j;
                     bestProbability = p;
                 }
             }
+
             // Set the best class as the label
-            X.setCarAcceptability(uniqueClasses.get(indexOfBestClass));
+            testDataset.get(i).setCarAcceptability(uniqueClasses.get(indexOfBestClass));
         }
     }
 
@@ -110,7 +113,7 @@ public class Classifier {
         // = P(x1,Ci) * P(x2,Ci) * ..... P(x6,Ci)
         double probOfClass = classesProbabilities.get(C) * 1.0 / learningDataset.size();
         double prod = tupleGivenClass(X, C); // P(X|Ci)
-        //System.out.println(prod + " " + probOfClass);
+        // System.out.println(prod + " " + probOfClass);
         double bayes = prod * probOfClass;
         return bayes;
     }
@@ -122,18 +125,18 @@ public class Classifier {
         p *= getProbabilityOfAttributeAndClass(4, X.Capacity, C);
         p *= getProbabilityOfAttributeAndClass(5, X.SizeOfLuggageBoot, C);
         p *= getProbabilityOfAttributeAndClass(6, X.EstimatedSafety, C);
-        return p ;
+        return p;
     }
 
     private double getProbabilityOfAttributeAndClass(int attNumber, String value, String C) {
         int count = getCOUNT(attNumber, value, C);
-        int ALPHA = 0 ;
-        if(count == 0) {
-            ALPHA = 1 ;
+        int ALPHA = 0;
+        if (count == 0) {
+            ALPHA = 1;
         }
         // The equation below is Laplace smoothing
-        double p = (1.0 * count + ALPHA)/ (classesProbabilities.get(C) + 6 * ALPHA) ;
-        //System.out.println(p);
+        double p = (1.0 * count + ALPHA) / (classesProbabilities.get(C) + 6 * ALPHA);
+        // System.out.println(p);
         return p;
     }
 
@@ -141,38 +144,44 @@ public class Classifier {
         int p = 0;
         if (attNumber == 1) {
             for (int i = 0; i < learningDataset.size(); i++) {
-                if (learningDataset.get(i).BuyingPrice == value && learningDataset.get(i).CarAcceptability == C) {
+                if (learningDataset.get(i).BuyingPrice.compareTo(value) == 0
+                        && learningDataset.get(i).CarAcceptability.compareTo(C) == 0) {
                     p++;
                 }
             }
         } else if (attNumber == 2) {
             for (int i = 0; i < learningDataset.size(); i++) {
-                if (learningDataset.get(i).MaintenancePrice == value && learningDataset.get(i).CarAcceptability == C) {
+                if (learningDataset.get(i).MaintenancePrice.compareTo(value) == 0
+                        && learningDataset.get(i).CarAcceptability.compareTo(C) == 0) {
                     p++;
                 }
             }
         }
         if (attNumber == 3) {
             for (int i = 0; i < learningDataset.size(); i++) {
-                if (learningDataset.get(i).NumberOfDoors == value && learningDataset.get(i).CarAcceptability == C) {
+                if (learningDataset.get(i).NumberOfDoors.compareTo(value) == 0
+                        && learningDataset.get(i).CarAcceptability.compareTo(C) == 0) {
                     p++;
                 }
             }
         } else if (attNumber == 4) {
             for (int i = 0; i < learningDataset.size(); i++) {
-                if (learningDataset.get(i).Capacity == value && learningDataset.get(i).CarAcceptability == C) {
+                if (learningDataset.get(i).Capacity.compareTo(value) == 0
+                        && learningDataset.get(i).CarAcceptability.compareTo(C) == 0) {
                     p++;
                 }
             }
         } else if (attNumber == 5) {
             for (int i = 0; i < learningDataset.size(); i++) {
-                if (learningDataset.get(i).SizeOfLuggageBoot == value && learningDataset.get(i).CarAcceptability == C) {
+                if (learningDataset.get(i).SizeOfLuggageBoot.compareTo(value) == 0
+                        && learningDataset.get(i).CarAcceptability.compareTo(C) == 0) {
                     p++;
                 }
             }
         } else if (attNumber == 6) {
             for (int i = 0; i < learningDataset.size(); i++) {
-                if (learningDataset.get(i).EstimatedSafety == value && learningDataset.get(i).CarAcceptability == C) {
+                if (learningDataset.get(i).EstimatedSafety.compareTo(value) == 0
+                        && learningDataset.get(i).CarAcceptability.compareTo(C) == 0) {
                     p++;
                 }
             }
@@ -187,5 +196,27 @@ public class Classifier {
             bw.write(output);
         }
         bw.close();
+    }
+
+    private double calculateClassifierAccuracy() throws IOException {
+        int n = 432 ;
+        double accuracy = 0 ;
+        String fileName = "Test dataset with class label.txt";
+        String fileName2 = "Classified Test dataset.txt";
+        RandomAccessFile file = new RandomAccessFile(fileName, "r");
+        RandomAccessFile file2 = new RandomAccessFile(fileName2, "r");
+        file.seek(0);
+        for (int i = 0; i < n; i++) {
+            String inputParts[] = file.readLine().split(",");
+            String inputParts2[] = file2.readLine().split(",");
+            String label1 = inputParts[7];
+            String label2 = inputParts2[7];
+            if(label1.compareTo(label2) == 0){
+                accuracy++ ;
+            }
+        }
+        file.close();
+        file2.close();
+        return accuracy * 1.0 / n ;
     }
 }

@@ -1,5 +1,6 @@
 public class Record {
     String BuyingPrice = "" ;
+    String CarID = "" ;
     String MaintenancePrice = "" ;
     String NumberOfDoors = "" ;
     String Capacity = "" ;
@@ -9,7 +10,8 @@ public class Record {
 
     public Record(){}
 
-    public Record(String bPrice, String mPrice, String doors, String cap, String luggage, String safety){
+    public Record(String carid, String bPrice, String mPrice, String doors, String cap, String luggage, String safety){
+        this.CarID = carid ;
         this.BuyingPrice = bPrice ;
         this.MaintenancePrice = mPrice ;
         this.NumberOfDoors = doors ;
@@ -24,7 +26,7 @@ public class Record {
 
     @Override
     public String toString(){
-        return BuyingPrice + "," + MaintenancePrice  + "," + NumberOfDoors  + "," 
+        return CarID + "," + BuyingPrice + "," + MaintenancePrice  + "," + NumberOfDoors  + "," 
         + Capacity + "," + SizeOfLuggageBoot + "," + EstimatedSafety  + "," + CarAcceptability + "\n" ;
     }
 }

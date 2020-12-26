@@ -3,6 +3,5 @@ public class App {
         //System.out.println("");
 
         Classifier.run();
-
     }
 }
