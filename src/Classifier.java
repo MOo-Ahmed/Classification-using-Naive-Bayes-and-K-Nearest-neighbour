@@ -1,5 +1,4 @@
 import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -10,6 +9,14 @@ import java.util.Map;
 public class Classifier {
     boolean laplacianCorrection = false;
     int N = 0;
+    Map<String, Integer> feature1Indices = new HashMap<String, Integer>();
+    Map<String, Integer> feature2Indices = new HashMap<String, Integer>();
+    Map<String, Integer> feature3Indices = new HashMap<String, Integer>();
+    Map<String, Integer> feature4Indices = new HashMap<String, Integer>();
+    Map<String, Integer> feature5Indices = new HashMap<String, Integer>();
+    Map<String, Integer> feature6Indices = new HashMap<String, Integer>();
+    Map<String, Integer> majorityVoteMap = new HashMap<String, Integer>();
+
 
     public ArrayList<Record> learningDataset = new ArrayList<>();
     public ArrayList<Record> testDataset = new ArrayList<>();
@@ -17,6 +24,34 @@ public class Classifier {
     Map<String, Integer> classesProbabilities = new HashMap<>();
 
     public Classifier() {
+  
+        feature1Indices.put("vhigh", 1);
+        feature1Indices.put("high", 2);
+        feature1Indices.put("med", 3);
+        feature1Indices.put("low", 4);
+
+        feature2Indices.put("vhigh", 1);
+        feature2Indices.put("high", 2);
+        feature2Indices.put("med", 3);
+        feature2Indices.put("low", 4);
+
+        feature3Indices.put("2", 1);
+        feature3Indices.put("3", 2);
+        feature3Indices.put("4", 3);
+        feature3Indices.put("5more", 4);
+
+        feature4Indices.put("2", 1);
+        feature4Indices.put("4", 2);
+        feature4Indices.put("more", 3);
+
+        //small, med, big
+        feature5Indices.put("small", 1);
+        feature5Indices.put("med", 2);
+        feature5Indices.put("big", 3);
+
+        feature6Indices.put("low", 1);
+        feature6Indices.put("med", 2);
+        feature6Indices.put("high", 3);
     }
 
     public static void run() throws IOException {
@@ -30,9 +65,15 @@ public class Classifier {
         loadTestData();
 
         classify();
-        writeClassifiedTestData();
-        System.out.println("Finished Writing records back");
-        System.out.println("\nClassifier accuracy = " + calculateClassifierAccuracy());
+        writeClassifiedTestData("Naive bayesian");
+        //System.out.println("Finished Writing records back");
+        System.out.println("\nBayesian Classifier accuracy = " + calculateClassifierAccuracy("Naive bayesian"));
+        
+        performK_NearestNeighbourClassification();
+        writeClassifiedTestData("K Nearest Neighbour");
+        //System.out.println("Finished Writing records back");
+        System.out.println("\nK Nearest Neighbour Classifier accuracy = " + calculateClassifierAccuracy("K Nearest Neighbour"));
+
 
     }
 
@@ -189,8 +230,8 @@ public class Classifier {
         return p;
     }
 
-    private void writeClassifiedTestData() throws IOException {
-        BufferedWriter bw = new BufferedWriter(new FileWriter("Classified Test dataset.txt"));
+    private void writeClassifiedTestData(String classifierName) throws IOException {
+        BufferedWriter bw = new BufferedWriter(new FileWriter("Classified Test dataset with " + classifierName + ".txt"));
         for (int i = 0; i < testDataset.size(); i++) {
             String output = testDataset.get(i).toString();
             bw.write(output);
@@ -198,11 +239,12 @@ public class Classifier {
         bw.close();
     }
 
-    private double calculateClassifierAccuracy() throws IOException {
+    private double calculateClassifierAccuracy(String classifierName) throws IOException {
         int n = 432 ;
         double accuracy = 0 ;
         String fileName = "Test dataset with class label.txt";
-        String fileName2 = "Classified Test dataset.txt";
+        String fileName2 = "Classified Test dataset with " + classifierName + ".txt";
+        
         RandomAccessFile file = new RandomAccessFile(fileName, "r");
         RandomAccessFile file2 = new RandomAccessFile(fileName2, "r");
         file.seek(0);
@@ -219,4 +261,62 @@ public class Classifier {
         file2.close();
         return accuracy * 1.0 / n ;
     }
+
+    private void resetTestDatasetClassLabels(){
+        for(int i = 0 ; i < testDataset.size() ; i++){
+            testDataset.get(i).CarAcceptability = "" ;
+        }
+    }
+
+    private void performK_NearestNeighbourClassification(){
+        resetTestDatasetClassLabels();
+        for(int i = 0 ; i < testDataset.size(); i++) {
+            Record test = testDataset.get(i);
+            String majorityVoteTo = makeMajorityVote(getAllDistances(test));
+            testDataset.get(i).setCarAcceptability(majorityVoteTo);
+        }
+    }
+
+    private String makeMajorityVote(ArrayList<Neighbour> neighbours){
+        majorityVoteMap.clear();
+        for(int i = 0 ; i < 5 ; i++){
+            majorityVoteMap.put(neighbours.get(i).classLabel, 1) ;
+        }
+        Map.Entry<String, Integer> maxEntry = null;
+        for (Map.Entry<String, Integer> entry : majorityVoteMap.entrySet())
+        {
+            if (maxEntry == null || entry.getValue() > maxEntry.getValue())
+            {
+                maxEntry = entry;
+            }
+        }
+        majorityVoteMap.clear();
+        String vote = maxEntry.getKey();
+        return vote ;
+    }
+
+    private ArrayList<Neighbour> getAllDistances(Record r1){
+        ArrayList<Neighbour> neighbours = new ArrayList<Neighbour>() ;
+        for(int i = 0; i < N ; i++){
+            double distance = getManhattanDistance(r1, learningDataset.get(i));
+            neighbours.add(new Neighbour(distance, learningDataset.get(i).CarAcceptability));
+        }
+        
+        neighbours.sort(new Neighbour());
+        ArrayList<Neighbour> bestNeighbours = new ArrayList<Neighbour>() ;
+        for(int i = 0 ; i < 5 ; i++)    bestNeighbours.add(neighbours.get(i));
+        return bestNeighbours ;
+    }
+
+    private double getManhattanDistance(Record r1, Record r2) {
+        double distance = 0 ;
+        distance += Math.abs(feature1Indices.get(r1.BuyingPrice) - feature1Indices.get(r2.BuyingPrice)) * 0.00001;
+        distance += Math.abs(feature2Indices.get(r1.MaintenancePrice) - feature2Indices.get(r2.MaintenancePrice))  * 0.001;
+        distance += Math.abs(feature3Indices.get(r1.NumberOfDoors) - feature3Indices.get(r2.NumberOfDoors)) * 0.1 ;
+        distance += Math.abs(feature4Indices.get(r1.Capacity) - feature4Indices.get(r2.Capacity)) * 10 ;
+        distance += Math.abs(feature5Indices.get(r1.SizeOfLuggageBoot) - feature5Indices.get(r2.SizeOfLuggageBoot))  * 100;
+        distance += Math.abs(feature6Indices.get(r1.EstimatedSafety) - feature6Indices.get(r2.EstimatedSafety)) * 10000;
+        return distance ;
+    }
+
 }
